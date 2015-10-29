@@ -110,6 +110,38 @@ class var{
 				return var("ERROR");
 			}
 		}
+		var operator==(var t)const{
+			if (type != t.type)
+				return var(0);
+			if (type == 0)
+				return (i == t.i);
+			else
+				return (*s == *(t.s));
+		}
+		var operator!=(var t)const{
+			if (type != t.type)
+				return var(0);
+			if (type == 0)
+				return var(i != t.i);
+			else
+				return var(*s != *(t.s));
+		}
+		var operator>(var t)const{
+			if (type != t.type)
+				return var(0);
+			if (type == 0)
+				return var(i > t.i);
+			else
+				return var(*s > *(t.s));
+		}
+		var operator<(var t)const{
+			if (type != t.type)
+				return var(0);
+			if (type == 0)
+				return var(i > t.i);
+			else
+				return var(*s > *(t.s));
+		}
 		string out(){
 			if (type == 0)return sys.itos(i);
 			else if (type == 1)return *s;
@@ -139,6 +171,25 @@ public:
 	bool getVarType(){
 		//must exist
 		return global_var.find(NO)->second.type;
+	}
+	void calSta(stack<int> &ope, stack<var> &num, int priority){
+		while (!ope.empty()){
+			if (priority == 1 && ope.top() > 2)break;//== !=
+			if (priority == 2 && ope.top() > 6)break;//> < >= <=
+			if (priority == 3 && ope.top() > 8)break;//+ -
+			if (priority == 4 && ope.top() > 11)break;//* / %
+			int t = ope.top(); ope.pop();
+			var t1 = num.top();
+			num.pop();
+			var t2 = num.top();
+			num.pop();
+			if (t == 1)
+			else if (t == 2)
+			else if (t == 3)
+			else if (t == 4)num.push(t2*t1);
+			else if (t == 5)num.push(t2 / t1);
+
+		}
 	}
 	var calExp(){
 		//int version
@@ -364,6 +415,12 @@ public:
 		else if (last_word == ")")word_type[word_now] = ")";
 		else if (last_word == "{")word_type[word_now] = "{";
 		else if (last_word == "}")word_type[word_now] = "}";
+		else if (last_word == "==")word_type[word_now] = "==";
+		else if (last_word == "!=")word_type[word_now] = "!=";
+		else if (last_word == ">")word_type[word_now] = ">";
+		else if (last_word == "<")word_type[word_now] = "<";
+		else if (last_word == "&&")word_type[word_now] = "&&";
+		else if (last_word == "||")word_type[word_now] = "||";
 		else word_type[word_now] = last_type;
 		last_type = "";
 		last_word = "";

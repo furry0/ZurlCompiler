@@ -3,7 +3,9 @@
 #include<string>
 #include<map>
 #include<stack>
-using namespace std;
+#include<windows.h>
+#include<ctime>
+using namespace std;	
 bool isNum(char c){
 	return c >= '0'&&c <= '9';
 }
@@ -18,11 +20,11 @@ bool isBac(char c){
 #define IS_OPE 3
 #define NO word_ori[render_now]
 #define NT word_type[render_now]
-string word_ori[100];
-string word_type[100];
+string word_ori[1000];
+string word_type[1000];
 int word_now;
-int global_var_num[100];
-string global_var_str[100];
+int global_var_num[1000];
+string global_var_str[1000];
 int render_now;
 class sys_class{
 public:
@@ -46,13 +48,16 @@ public:
 		return ret;
 	}
 }sys;
+#define TYPE_NUM 0
+#define TYPE_STR 1
+#define TYPE_NULL 0;
 class var{
 	public:
-		bool type;
+		char type;
 		int i;
 		string* s;
 		var(){
-
+			type = 3;
 		}
 		var(int x){
 			type = 0;
@@ -63,6 +68,7 @@ class var{
 			s = new string(x);
 		}
 		var operator+(const var t)const{
+			if (type == 3 || t.type == 3)return var();
 			if (type == 0 && t.type == 0){
 				//both int
 				return var(i + t.i);
@@ -78,6 +84,7 @@ class var{
 			}
 		}
 		var operator-(const var t)const{
+			if (type == 3 || t.type == 3)return var();
 			if (type == 0 && t.type == 0){
 				//both int
 				return var(i - t.i);
@@ -87,6 +94,7 @@ class var{
 			}
 		}
 		var operator*(const var t)const{
+			if (type == 3 || t.type == 3)return var();
 			if (type == 0 && t.type == 0){
 				//both int
 				return var(i * t.i);
@@ -102,6 +110,7 @@ class var{
 			}
 		}
 		var operator/(const var t)const{
+			if (type == 3 || t.type == 3)return var();
 			if (type == 0 && t.type == 0){
 				//both int
 				return var(i / t.i);
@@ -111,6 +120,7 @@ class var{
 			}
 		}
 		var operator==(var t)const{
+			if (type == 3 || t.type == 3)return var();
 			if (type != t.type)
 				return var(0);
 			if (type == 0)
@@ -119,6 +129,7 @@ class var{
 				return (*s == *(t.s));
 		}
 		var operator!=(var t)const{
+			if (type == 3 || t.type == 3)return var();
 			if (type != t.type)
 				return var(0);
 			if (type == 0)
@@ -127,6 +138,7 @@ class var{
 				return var(*s != *(t.s));
 		}
 		var operator>(var t)const{
+			if (type == 3 || t.type == 3)return var();
 			if (type != t.type)
 				return var(0);
 			if (type == 0)
@@ -135,21 +147,55 @@ class var{
 				return var(*s > *(t.s));
 		}
 		var operator<(var t)const{
+			if (type == 3 || t.type == 3)return var();
 			if (type != t.type)
 				return var(0);
 			if (type == 0)
-				return var(i > t.i);
+				return var(i < t.i);
 			else
-				return var(*s > *(t.s));
+				return var(*s < *(t.s));
 		}
-		string out(){
-			if (type == 0)return sys.itos(i);
-			else if (type == 1)return *s;
+		var operator>=(var t)const{
+			if (type == 3 || t.type == 3)return var();
+			if (type != t.type)
+				return var(0);
+			if (type == 0)
+				return var(i >= t.i);
+			else
+				return var(*s >= *(t.s));
+		}
+		var operator<=(var t)const{
+			if (type == 3 || t.type == 3)return var();
+			if (type != t.type)
+				return var(0);
+			if (type == 0)
+				return var(i <= t.i);
+			else
+				return var(*s <= *(t.s));
+		}
+		var operator%(var t)const{
+			if (type == 3 || t.type == 3)return var();
+			if (type != t.type)
+				return var(0);
+			if (type == 0)
+				return var(i % t.i);
+			else
+				return var("ERROR");
+		}
+		void out(){
+			if (type == 3)return;
+			if (type == 0)cout << sys.itos(i) << endl;
+			else if (type == 1)cout << *s << endl;
+		}
+		bool isTrue(){
+			return (this->type == 0 && this->i != 0);
 		}
 };
 
 class excute_controller{
 public:
+	bool onif = 0;
+	bool onifval = 0;
 	map<string, var> global_var;
 	bool initrender(){
 		render_now = 0;
@@ -174,21 +220,27 @@ public:
 	}
 	void calSta(stack<int> &ope, stack<var> &num, int priority){
 		while (!ope.empty()){
-			if (priority == 1 && ope.top() > 2)break;//== !=
-			if (priority == 2 && ope.top() > 6)break;//> < >= <=
-			if (priority == 3 && ope.top() > 8)break;//+ -
-			if (priority == 4 && ope.top() > 11)break;//* / %
+			if (priority == 1 && ope.top() < 0)break;//== !=
+			if (priority == 2 && ope.top() < 3)break;//> < >= <=
+			if (priority == 3 && ope.top() < 7)break;//+ -
+			if (priority == 4 && ope.top() < 9)break;//* / %
+			if (priority == 5 && ope.top() == 0)break;//()
 			int t = ope.top(); ope.pop();
 			var t1 = num.top();
 			num.pop();
 			var t2 = num.top();
 			num.pop();
-			if (t == 1)
-			else if (t == 2)
-			else if (t == 3)
-			else if (t == 4)num.push(t2*t1);
-			else if (t == 5)num.push(t2 / t1);
-
+			if (t == 1)num.push(t2 == t1);
+			else if (t == 2)num.push(t2 != t1);
+			else if (t == 3)num.push(t2 > t1);
+			else if (t == 4)num.push(t2 < t1); 
+			else if (t == 5)num.push(t2 >= t1);
+			else if (t == 6)num.push(t2 <= t1);
+			else if (t == 7)num.push(t2 + t1);
+			else if (t == 8)num.push(t2 - t1); 
+			else if (t == 9)num.push(t2 * t1);
+			else if (t == 10)num.push(t2 / t1);
+			else if (t == 11)num.push(t2 % t1);
 		}
 	}
 	var calExp(){
@@ -214,61 +266,48 @@ public:
 			if (NT == "{"){
 				num.push(render()); last = 0;
 		    }
-			if (NT == "+" || NT == "-"){
-				if (last == 1){
-					num.push(var(0));
-				}
-				while (!ope.empty() && (ope.top() == 3 || ope.top() == 4)){
-					int t = ope.top(); ope.pop();
-					var t1 = num.top();
-					num.pop();
-					var t2 = num.top();
-					num.pop();
-					if (t == 3)num.push(t2*t1);
-					if (t == 4)num.push(t2/t1);
-				}
-				if(NT == "+")ope.push(1);
-				if(NT == "-")ope.push(2);
+			if (NT == "==" || NT == "!="){
+				calSta(ope, num, 1);
+				if (NT == "==")ope.push(1);
+				if (NT == "!=")ope.push(2);
+				last = 1;
 			}
-			if (NT == "*" || NT == "/"){
-				if(NT =="*")ope.push(3);
-				if(NT == "/")ope.push(4);
+			if (NT == ">" || NT == "<" || NT == ">=" || NT == "<="){
+				calSta(ope, num, 2);
+				if (NT == ">")ope.push(3);
+				if (NT == "<")ope.push(4);
+				if (NT == ">=")ope.push(5);
+				if (NT == "<=")ope.push(6);
+				last = 1;
+			}
+			if (NT == "+" || NT == "-"){
+				calSta(ope, num, 3);
+				if(NT == "+" )ope.push(7);
+				if(NT == "-" )ope.push(8);
+				last = 1;
+			}
+			if (NT == "*" || NT == "/" || NT == "%"){
+				calSta(ope, num, 4);
+				if(NT == "*" )ope.push(9);
+				if(NT == "/" )ope.push(10);
+				if(NT == "%")ope.push(11);
 				last = 1;
 			}
 			if(NT == "("){
-				ope.push(5);
+				ope.push(0);
 				last = 1;
 			}
 			if(NT == ")"){
-				while ( !ope.empty() && ope.top() != 5 ){
-					int t = ope.top(); ope.pop();
-					var t1 = num.top();
-					num.pop();
-					var t2 = num.top();
-					num.pop();
-					if (t == 1)num.push(t2 + t1);
-					if (t == 2)num.push(t2 - t1);
-					if (t == 3)num.push(t2 * t1);
-					if (t == 4)num.push(t2 / t1);
-				}
+				calSta(ope, num, 5);
 				if (ope.empty())return "ERROR: blacket";
 				ope.pop();
 				last = 0;
 			}	
 			render_now++;
 		}
-		while (!ope.empty()){
-			int t = ope.top(); ope.pop();
-			var t1 = num.top();
-			num.pop();
-			var t2 = num.top();
-			num.pop();
-			if (t == 1)num.push(t2 + t1);
-			if (t == 2)num.push(t2 - t1);
-			if (t == 3)num.push(t2 * t1);
-			if (t == 4)num.push(t2 / t1);
-		}
-		return num.top();
+		calSta(ope, num, 0);
+		if (!num.empty())return num.top();
+		else return var();
 	}
 	bool make_var(string name,bool type){
 		if (type){
@@ -277,17 +316,34 @@ public:
 		else{
 			global_var.insert(pair<string, var>(name, var(0)));		
 		}
-		return 1;
+		return 1;	
 	}
-	void render_noeff(){
-		int onBrace = 0;
-		while (NT != ";" || onBrace){
-			if (NT == "{")onBrace++;
-			if (NT == "}")onBrace--;
+	
+	void skiprender(){
+		int onBlock = 0;
+		while (onBlock ||NT != ";"){
+			if (NT == "{")onBlock++;
+			if (NT == "}")onBlock--;
 			render_now++;
 		}
 	}
 	var render(){
+		if (NT == "delse"){
+			if (!this->onif){
+				return (var("error"));
+			}
+			else{
+				render_now++;
+				this->onif = 0;
+				if (this->onifval){
+					skiprender();
+					return var();
+				}
+				else{
+					return render();
+				}
+			}
+		}
 		if (NT == "din"){
 			if (word_type[render_now + 3] == ";" ){
 				if (!isVar(render_now + 2)){
@@ -296,7 +352,8 @@ public:
 				if (word_type[render_now + 1] == "dnum" ){
 					var &tvar = global_var.find(word_ori[render_now + 2])->second;
 					if (tvar.type == 0){
-						cin>>tvar.i;
+						cin >> tvar.i;
+						render_now += 3;
 						return var("");
 					}
 					else{
@@ -307,49 +364,69 @@ public:
 					var &tvar = global_var.find(word_ori[render_now + 2])->second;
 					if (tvar.type == 1){
 						cin >> *tvar.s;
+						render_now += 3;
 						return var("");
+						
 					}
 					else{
 						return var("Error: syntax error");
 					}
 				}
 				else {
-
+					return var("Error: syntax error");
 				}
 			}
 			else{
 				return var("Error: syntax error");
 			}
 		}
+		else if (NT == "dout"){
+
+		}
 		else if (NT == "dif"){
-			var ret = render();
+			render_now += 2;
+			var ret = calExp();
+			render_now++;
 			if (ret.type == 1){
 				return var("if not support str");
 			}
 			else{
-				if (ret.i == 0){
-					render_noeff();
-					if (NT == "delse")return render();
-					else return var(0);
-					
-				}
-				else{
+				if (ret.i == 1){
+					this->onif = 1;
+					this->onifval = 1;
 					return render();
 				}
+				else{
+					skiprender();
+					this->onif = 1;
+					this->onifval = 0;
+					return var();
+				}
+				
 			}
 		}
+		
 		else if (NT == "dwhile"){
-			
+			render_now += 2;
+			int save_now = render_now;
+			while (render().isTrue()){
+				render_now++;
+				render();
+				render_now = save_now;
+			}
+			render_now++;
+			skiprender();
+			return var();
 		}
 		else if (NT == "dnum"){
 			if (word_type[render_now + 1] == "letter" && word_type[render_now + 2] == ";"){
-				make_var(word_ori[render_now + 1],0);
+				make_var(word_ori[render_now + 1], 0);
 				render_now += 2;
-				return var(0);
+				return var();
 			}
 			else{
 				cout << "ERROR:NUM LETTER" << endl;
-				
+				return var();
 			}
 		}
 		else if (NT == "dstr"){
@@ -370,8 +447,10 @@ public:
 			var ret = render();
 			
 			if (ret.type == tvar.type){
-				if (ret.type == 0)tvar.i = ret.i;
-				else *(tvar.s) = *(ret.s);
+				
+					if (ret.type == 0)tvar.i = ret.i;
+					else *(tvar.s) = *(ret.s);
+				
 			}
 			else{
 				cout << "TYPE NOT OK" << endl;
@@ -419,11 +498,27 @@ public:
 		else if (last_word == "!=")word_type[word_now] = "!=";
 		else if (last_word == ">")word_type[word_now] = ">";
 		else if (last_word == "<")word_type[word_now] = "<";
+		else if (last_word == ">=")word_type[word_now] = ">=";
+		else if (last_word == "<=")word_type[word_now] = "<=";
+		else if (last_word == "%")word_type[word_now] = "%";
 		else if (last_word == "&&")word_type[word_now] = "&&";
 		else if (last_word == "||")word_type[word_now] = "||";
+		else if (last_word == "+=")word_type[word_now] = "+=";
+		else if (last_word == "-=")word_type[word_now] = "-=";
+		else if (last_word == "*=")word_type[word_now] = "*=";
+		else if (last_word == "/=")word_type[word_now] = "/=";
 		else word_type[word_now] = last_type;
 		last_type = "";
 		last_word = "";
+	}
+	void conditionAdjust(int x){
+		int onBrace = 1, i;
+		for (i = x; onBrace; i++){
+			if (word_type[i] == "(")onBrace++;
+			if (word_type[i] == ")")onBrace--;
+		}
+		word_type[i - 1] = ';';
+		return;
 	}
 	bool sys_preprocess(){
 		/*
@@ -445,7 +540,7 @@ public:
 		}
 		*/
 		for (int i = 1; i <= word_now; i++){
-			
+			if (word_type[i] == "dif" || word_type[i] == "dwhile")conditionAdjust(i + 2);
 		}
 		return 1;
 	}
@@ -453,9 +548,9 @@ public:
 		last_type = "";
 		char c, lc=' '; int n = 0; string str;
 		c = getchar();
-		word_now = 0; int onBlock = 0,onString =0;
+		word_now = 0; int onBlock = 0,onBrace = 0,onString =0;
 		string wordsaver = "";
-		while (c != ';' || onBlock || onString){
+		while (c != ';' || onBlock || onString || onBrace){
 			if( c== ';'){
 				last_save();
 				last_type = ";";
@@ -500,15 +595,17 @@ public:
 				last_save(); last_word = c;
 				if (c == '('){
 						last_type = "b_begin";
+						onBrace++;
 				}
 				else if (c == ')'){
 						last_type = "b_end";
+						onBrace--;
 				
 				}else if (c == '{'){
-					onBlock = 1;
+					onBlock ++;
 					last_type = "block_begin";
 				}else{
-					onBlock = 0;
+					onBlock --;
 					last_type = "block_end";
 				}
 			}
@@ -536,13 +633,14 @@ public:
 
 int main(){
 	while (ins.sys_input()){
+		DWORD a = GetTickCount();
 		ins.sys_preprocess();
 		/*for (int i = 1; i <= word_now; i++){
-			cout << word_ori[i] << " " << word_type[i] << endl;
+			cout << i<<" : "<<word_ori[i] << " " << word_type[i] << endl;
 		}*/
 		render_now = 1;
-		cout << exe.render().out() << endl;
-		
+		exe.render().out();
+		cout << GetTickCount() - a << " ms"<<endl;
 	}
 	return 0;
 }
